@@ -38,6 +38,7 @@ public class IssueService {
 
     @GetMapping("/bookss/{readerId}")
     public Issue createIssue( IssueRequest request){
+        issueBook(1L,1L);
         if (bookRepository.findById(request.getBookId()) == null){
             log.info("Не удалось найти книгу с id " + request.getBookId());
             throw new NoSuchElementException("Не удалось найти книгу с id " + request.getBookId());
@@ -52,7 +53,8 @@ public class IssueService {
         return issue;
     }
 
-    public void issueBook(@PathVariable Long readerId, Long bookId ) {
+
+    public void issueBook( Long readerId, Long bookId ) {
         Reader reader = readerRepository.findById(readerId);
         if (reader != null && reader.getIssuedBooks().isEmpty()) {
             Book book = bookRepository.findById(bookId);
