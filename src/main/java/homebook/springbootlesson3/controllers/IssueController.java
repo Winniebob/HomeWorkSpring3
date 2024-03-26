@@ -2,17 +2,23 @@ package homebook.springbootlesson3.controllers;
 
 import homebook.springbootlesson3.entity.Book;
 import homebook.springbootlesson3.entity.Issue;
+import homebook.springbootlesson3.entity.Reader;
+import homebook.springbootlesson3.repository.ReaderRepository;
 import homebook.springbootlesson3.services.IssueService;
+import homebook.springbootlesson3.services.ReaderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import homebook.springbootlesson3.repository.BookRepository;
 import homebook.springbootlesson3.repository.IssueRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 
 @Slf4j
@@ -22,11 +28,10 @@ import java.util.Map;
 public class IssueController {
 
     @Autowired
-    private IssueService service;
+    private ReaderService readerService;
     @Autowired
-    private BookRepository bookRepository;
-    @Autowired
-    private IssueRepository issueRepository;
+    private IssueService issueService;
+
     private final Map<Long, Issue> issueMap = new HashMap<>();
     private int maxAllowedBooks = 1; // default value
 
@@ -45,9 +50,9 @@ public class IssueController {
 
     @GetMapping("/book/{id}")
     public String getBookDescription(@PathVariable Long id) {
-        Book book = bookRepository.findById(id);
+        Book book = issueService.findById(id);
         if (book != null) {
-            return bookRepository.getDescription(id);
+            return issueService.getDescription(id);
         } else {
             return "Книга с id=" + id + " не найдена";
         }
@@ -55,9 +60,9 @@ public class IssueController {
 
     @DeleteMapping("/book/{id}")
     public String deleteBook(@PathVariable Long id) {
-        Book book = bookRepository.findById(id);
+        Book book = issueService.findById(id);
         if (book != null) {
-            bookRepository.delete(id);
+            issueService.deleteBook(id);
             return "Книга с id=" + id + " удалена";
         } else {
             return "Книга с id=" + id + " не найдена";
@@ -67,7 +72,7 @@ public class IssueController {
     @PostMapping("/book/{name}")
     public Book createBook(@PathVariable String name) {
         Book newBook = new Book(name);
-        bookRepository.save(newBook);
+        issueService.saveBook(newBook);
         return newBook;
     }
 
@@ -96,7 +101,7 @@ public class IssueController {
     @GetMapping("{id}")
     public String getIssueDescription(@PathVariable Long id) {
 
-        Issue issue = issueRepository.findById(id);
+        Issue issue = issueService.findByIdIssue(id);
         if (issue != null) {
             return issue.getDescription();
         } else {
@@ -105,6 +110,37 @@ public class IssueController {
     }
 
     public Book saveBook(Book book) {
-        return bookRepository.save(book);
+        return issueService.saveBook(book);
     }
+    @GetMapping("/bookss/{readerId}")
+    public Issue createIssue( IssueRequest request){
+        issueBook(1L,1L);
+        if (issueService.findById(request.getBookId()) == null){
+            log.info("Не удалось найти книгу с id " + request.getBookId());
+            throw new NoSuchElementException("Не удалось найти книгу с id " + request.getBookId());
+        }
+        if (issueService.findById(request.getReaderId()) == null){
+            log.info("Не удалось найти читателя с id " + request.getReaderId());
+            throw new NoSuchElementException("Не удалось найти читателя с id " + request.getReaderId());
+        }
+
+        Issue issue = new Issue(request.getReaderId(), request.getBookId());
+        issueService.createIssue(issue);
+        return issue;
+    }
+
+    public void issueBook( Long readerId, Long bookId ) {
+        Reader reader = readerService.findById(readerId);
+        if (reader != null && reader.getIssuedBooks().isEmpty()) {
+            Book book = issueService.findById(bookId);
+            if (book != null) {
+                // Выдача книги читателю
+                reader.getIssuedBooks().add(book);
+                readerService.saveReader(reader);
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "У пользователя уже есть на руках книги");
+        }
+    }
+
 }
